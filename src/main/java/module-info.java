@@ -1,4 +1,4 @@
-module com.example.demo {
+module com.games.tetris {
     requires javafx.controls;
     requires javafx.fxml;
     requires javafx.web;
@@ -10,6 +10,6 @@ module com.example.demo {
     requires org.kordamp.bootstrapfx.core;
     requires eu.hansolo.tilesfx;
 
-    opens com.example.demo to javafx.fxml;
-    exports com.example.demo;
+    opens com.games.tetris to javafx.fxml;
+    exports com.games.tetris;
 }
