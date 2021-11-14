@@ -7,13 +7,13 @@ import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.paint.*;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
 
 import java.util.*;
+import java.util.stream.IntStream;
 
 public class TetrisGame extends Application {
 
@@ -39,6 +39,7 @@ public class TetrisGame extends Application {
 
     ArrayList<Tetramino> landedTetraminos = new ArrayList<>();
     public Tetramino currentTetramino;
+    public Tetramino nextTetramino;
 
     private final Canvas canvas;
     private final GraphicsContext gc;
@@ -71,24 +72,14 @@ public class TetrisGame extends Application {
         drawGame();
 
         scene.addEventHandler(KeyEvent.KEY_PRESSED, (key) -> {
-            String keypress = "";
-            if (key.getCode() == KeyCode.RIGHT
-                    | key.getCode() == KeyCode.LEFT
-                    | key.getCode() == KeyCode.UP
-                    | key.getCode() == KeyCode.DOWN
-                    | key.getCode() == KeyCode.SPACE
-            ) {
-                keypress = key.getCode().toString();
-            }
-
             if (this.gameEnd) {
-                if  (keypress.equals("SPACE")) {
-                        resetGame();
+                if (key.getCode().toString().equals("SPACE")) {
+                    resetGame();
                 }
                 return;
             }
 
-            switch (keypress) {
+            switch (key.getCode().toString()) {
                 case "RIGHT":
                     if (this.currentTetramino.x < this.maxInlineBlocks - this.currentTetramino.width && !detectRightColision(currentTetramino)) {
                         this.currentTetramino.setX(this.currentTetramino.x + 1);
@@ -116,6 +107,17 @@ public class TetrisGame extends Application {
                         this.currentTetramino.rotate();
                     }
                     break;
+                case "S":
+                    this.gameLoop.stop();
+                    break;
+                case "R":
+                    this.gameLoop.start();
+                    break;
+                case "A":
+                    initializeTetramino();
+                    break;
+                default:
+                    System.out.println(key.getCode().toString());
             }
             drawGame();
         });
@@ -138,6 +140,7 @@ public class TetrisGame extends Application {
                     } else {
                         handleLandedTetramino(currentTetramino);
                         initializeTetramino();
+                        drawGame();
                         if (detectVerticalCollision(currentTetramino)) {
                             this.stop();
                             gameOver();
@@ -161,6 +164,61 @@ public class TetrisGame extends Application {
     private void handleLandedTetramino(Tetramino tetramino) {
         this.landedTetraminos.add(tetramino);
         addToGrid(currentTetramino);
+        clearCompletedRows();
+    }
+
+    private int gridHasCompletedRows() {
+        for (int i = 0; i < this.grid.length; i++) {
+            if (IntStream.of(this.grid[i]).noneMatch(x -> x == 0)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private void shiftGridRows(int row) {
+        if (row >= 0) System.arraycopy(this.grid, 0, this.grid, 1, row);
+    }
+
+    private void crippleLandedTetraminos(int row){
+        for (Tetramino tetramino : this.landedTetraminos) {
+            // Remove empty tetraminos
+            if (tetramino.tetramino.length == 0) {
+                this.landedTetraminos.remove(tetramino);
+                // Cripple tetraminos
+            } else if ((row + 1) - tetramino.y <= tetramino.height) {
+                int rowToRemove = (row + 1) - tetramino.y;
+                int[][] crippledTetramino = new int[tetramino.tetramino.length - 1][tetramino.tetramino[0].length];
+                int index = 0;
+                for (int k = 0; k < tetramino.tetramino.length - 1; k++) {
+                    if (k != rowToRemove) {
+                        crippledTetramino[index] = tetramino.tetramino[k];
+                        index++;
+                    }
+                }
+                //Remove completed lines
+                tetramino.tetramino = crippledTetramino;
+            }
+        }
+    }
+
+    private void shiftDownLandedTetraminos(int row){
+        for (Tetramino tetramino : this.landedTetraminos) {
+            if (row + 1 > tetramino.y) {
+                tetramino.setY(tetramino.y + 1);
+            }
+        }
+    }
+
+    private void clearCompletedRows() {
+        printGrid();
+        int completedRow = this.gridHasCompletedRows();
+        if (completedRow == -1) {
+            return;
+        }
+        this.shiftGridRows(completedRow);
+        this.crippleLandedTetraminos(completedRow);
+        this.shiftDownLandedTetraminos(completedRow);
     }
 
     private void gameOver() {
@@ -255,6 +313,15 @@ public class TetrisGame extends Application {
         }
         drawTetramino(this.currentTetramino);
         drawPanel(this.panelPadding, this.panelPadding, this.panelWidth, this.panelHeight);
+        drawNextTetramino();
+    }
+
+    private void drawNextTetramino() {
+//        this.gc.strokeRect(((this.maxInlineBlocks + 1) * this.blockSize) + this.panelPadding, (this.blockSize * 1) + this.panelPadding,  this.blockSize * 5, this.blockSize * 4);
+        this.nextTetramino.setX(this.maxInlineBlocks + 2);
+        this.nextTetramino.setY(2);
+        drawTetramino(this.nextTetramino);
+
     }
 
     private void drawPanel(int posX, int posY, int panelWidth, int panelHeight) {
@@ -294,7 +361,13 @@ public class TetrisGame extends Application {
         tetraminos.add(tetramino5);
         tetraminos.add(tetramino6);
         tetraminos.add(tetramino7);
-        this.currentTetramino = new Tetramino(0, 0, tetraminos.get(rand.nextInt(tetraminos.size())));
+        if (this.nextTetramino == null) {
+            this.nextTetramino = new Tetramino(0, 0, tetraminos.get(rand.nextInt(tetraminos.size())));
+        }
+        this.currentTetramino = this.nextTetramino;
+        this.currentTetramino.setX((this.maxInlineBlocks / 2) - 1);
+        this.currentTetramino.setY(0);
+        this.nextTetramino = new Tetramino(0, 0, tetraminos.get(rand.nextInt(tetraminos.size())));
     }
 
     private void drawTetramino(Tetramino tetramino) {
