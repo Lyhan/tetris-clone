@@ -10,7 +10,7 @@ public class Tetramino {
     protected int x, y, width, height;
     protected Color color1, color2;
 
-    protected int[][] tetramino;
+    protected int[][] tetramino, nextRotation;
 
     public Tetramino(int posX, int posY, int[][] tetramino) {
         this.x = posX;
@@ -23,6 +23,7 @@ public class Tetramino {
         }
         this.width = this.tetramino[0].length;
         this.height = this.tetramino.length;
+        this.nextRotation = this.getNextRotation();
 
     }
 
@@ -32,6 +33,26 @@ public class Tetramino {
 
     public void setY(int val) {
         this.y = val;
+    }
+
+    public int[][] getNextRotation() {
+        int rows = this.tetramino.length;
+        int rowLength = this.tetramino[0].length;
+        int[][] rotated = new int[rowLength][rows];
+
+        for (int i = 0; i < rowLength; i++) {
+            for (int j = 0; j < rows; j++) {
+                rotated[i][rows - j - 1] = this.tetramino[j][i];
+            }
+        }
+        return rotated;
+    }
+
+    public void rotate(){
+        this.tetramino = this.nextRotation;
+        this.width = this.tetramino[0].length;
+        this.height = this.tetramino.length;
+        this.nextRotation = this.getNextRotation();
     }
 
     private Color generateRandomColor() {
