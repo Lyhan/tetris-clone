@@ -13,7 +13,6 @@ import javafx.scene.text.Font;
 import javafx.stage.Stage;
 
 import java.util.*;
-import java.util.stream.IntStream;
 
 public class TetrisGame extends Application {
 
@@ -43,22 +42,23 @@ public class TetrisGame extends Application {
 
     private final Canvas canvas;
     private final GraphicsContext gc;
-    public int[][] grid;
+    public Grid grid;
     public boolean gameEnd = false;
     AnimationTimer gameLoop;
 
     public TetrisGame() {
-        this.blockSize = 40;
-        this.maxStackBlocks = 16;
-        this.maxInlineBlocks = 10;
-        this.grid = new int[maxStackBlocks][maxInlineBlocks];
-        this.panelWidth = maxInlineBlocks * blockSize;
-        this.panelHeight = maxStackBlocks * blockSize;
+        blockSize = 40;
+        maxStackBlocks = 10;
+        maxInlineBlocks = 10;
+        grid = new Grid(maxStackBlocks, maxInlineBlocks);
+        panelWidth = maxInlineBlocks * blockSize;
+        panelHeight = maxStackBlocks * blockSize;
         int screenHeight = panelHeight + 2 * panelPadding;
         int screenWidth = panelWidth * 2;
-        this.canvas = new Canvas(screenWidth, screenHeight);
-        this.gc = canvas.getGraphicsContext2D();
-        this.initializeTetramino();
+        canvas = new Canvas(screenWidth, screenHeight);
+        gc = canvas.getGraphicsContext2D();
+        grid.initializeGrid();
+        initializeTetramino();
     }
 
     @Override
@@ -72,7 +72,7 @@ public class TetrisGame extends Application {
         drawGame();
 
         scene.addEventHandler(KeyEvent.KEY_PRESSED, (key) -> {
-            if (this.gameEnd) {
+            if (gameEnd) {
                 if (key.getCode().toString().equals("SPACE")) {
                     resetGame();
                 }
@@ -81,37 +81,37 @@ public class TetrisGame extends Application {
 
             switch (key.getCode().toString()) {
                 case "RIGHT":
-                    if (this.currentTetramino.x < this.maxInlineBlocks - this.currentTetramino.width && !detectRightColision(currentTetramino)) {
-                        this.currentTetramino.setX(this.currentTetramino.x + 1);
+                    if (currentTetramino.x < maxInlineBlocks - currentTetramino.width && !detectRightColision(currentTetramino)) {
+                        currentTetramino.setX(currentTetramino.x + 1);
                     }
                     break;
                 case "LEFT":
-                    if (this.currentTetramino.x > 0 && !detectLeftColision(currentTetramino)) {
-                        this.currentTetramino.setX(this.currentTetramino.x - 1);
+                    if (currentTetramino.x > 0 && !detectLeftColision(currentTetramino)) {
+                        currentTetramino.setX(currentTetramino.x - 1);
                     }
                     break;
                 case "UP":
-                    while (this.currentTetramino.y < this.maxStackBlocks - this.currentTetramino.height && !detectVerticalCollision(currentTetramino)) {
-                        this.currentTetramino.setY(this.currentTetramino.y + 1);
+                    while (currentTetramino.y < maxStackBlocks - currentTetramino.height && !detectVerticalCollision(currentTetramino)) {
+                        currentTetramino.setY(currentTetramino.y + 1);
                     }
-                    handleLandedTetramino(this.currentTetramino);
+                    grid.addTetramino(currentTetramino);
                     initializeTetramino();
                     break;
                 case "DOWN":
-                    if (this.currentTetramino.y < this.maxStackBlocks - this.currentTetramino.height) {
-                        this.currentTetramino.setY(this.currentTetramino.y + 1);
+                    if (currentTetramino.y < maxStackBlocks - currentTetramino.height) {
+                        currentTetramino.setY(currentTetramino.y + 1);
                     }
                     break;
                 case "SPACE":
-                    if (!detectRotationCollision(this.currentTetramino)) {
-                        this.currentTetramino.rotate();
+                    if (!detectRotationCollision(currentTetramino)) {
+                        currentTetramino.rotate();
                     }
                     break;
                 case "S":
-                    this.gameLoop.stop();
+                    gameLoop.stop();
                     break;
                 case "R":
-                    this.gameLoop.start();
+                    gameLoop.start();
                     break;
                 case "A":
                     initializeTetramino();
@@ -122,11 +122,11 @@ public class TetrisGame extends Application {
             drawGame();
         });
 
-        root.getChildren().addAll(this.canvas);
+        root.getChildren().addAll(canvas);
         primaryStage.setScene(scene);
         primaryStage.show();
 
-        this.gameLoop = new AnimationTimer() {
+        gameLoop = new AnimationTimer() {
             private double lastupdate = 0;
 
             @Override
@@ -138,7 +138,7 @@ public class TetrisGame extends Application {
                         currentTetramino.setY(currentTetramino.y + 1);
                         drawGame();
                     } else {
-                        handleLandedTetramino(currentTetramino);
+                        grid.addTetramino(currentTetramino);
                         initializeTetramino();
                         drawGame();
                         if (detectVerticalCollision(currentTetramino)) {
@@ -155,91 +155,31 @@ public class TetrisGame extends Application {
 
 
     private void resetGame() {
-        this.landedTetraminos.clear();
-        this.grid = new int[maxStackBlocks][maxInlineBlocks];
-        this.gameEnd = false;
-        this.gameLoop.start();
-    }
-
-    private void handleLandedTetramino(Tetramino tetramino) {
-        this.landedTetraminos.add(tetramino);
-        addToGrid(currentTetramino);
-        clearCompletedRows();
-    }
-
-    private int gridHasCompletedRows() {
-        for (int i = 0; i < this.grid.length; i++) {
-            if (IntStream.of(this.grid[i]).noneMatch(x -> x == 0)) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    private void shiftGridRows(int row) {
-        if (row >= 0) System.arraycopy(this.grid, 0, this.grid, 1, row);
-    }
-
-    private void crippleLandedTetraminos(int row){
-        for (Tetramino tetramino : this.landedTetraminos) {
-            // Remove empty tetraminos
-            if (tetramino.tetramino.length == 0) {
-                this.landedTetraminos.remove(tetramino);
-                // Cripple tetraminos
-            } else if ((row + 1) - tetramino.y <= tetramino.height) {
-                int rowToRemove = (row + 1) - tetramino.y;
-                int[][] crippledTetramino = new int[tetramino.tetramino.length - 1][tetramino.tetramino[0].length];
-                int index = 0;
-                for (int k = 0; k < tetramino.tetramino.length - 1; k++) {
-                    if (k != rowToRemove) {
-                        crippledTetramino[index] = tetramino.tetramino[k];
-                        index++;
-                    }
-                }
-                //Remove completed lines
-                tetramino.tetramino = crippledTetramino;
-            }
-        }
-    }
-
-    private void shiftDownLandedTetraminos(int row){
-        for (Tetramino tetramino : this.landedTetraminos) {
-            if (row + 1 > tetramino.y) {
-                tetramino.setY(tetramino.y + 1);
-            }
-        }
-    }
-
-    private void clearCompletedRows() {
-        printGrid();
-        int completedRow = this.gridHasCompletedRows();
-        if (completedRow == -1) {
-            return;
-        }
-        this.shiftGridRows(completedRow);
-        this.crippleLandedTetraminos(completedRow);
-        this.shiftDownLandedTetraminos(completedRow);
+        grid.initializeGrid();
+        gameEnd = false;
+        gameLoop.start();
     }
 
     private void gameOver() {
-        this.gameEnd = true;
-        this.gc.clearRect(0, 0, this.canvas.getWidth(), this.canvas.getHeight());
-        drawPanel(this.panelPadding, panelPadding, panelWidth, panelHeight);
-        this.gc.setFont(new Font(50));
-        this.gc.setFill(new LinearGradient(0, 0, 0.5, 0.5, true, CycleMethod.REPEAT,
+        gameEnd = true;
+        gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
+        drawPanel(panelPadding, panelPadding, panelWidth, panelHeight);
+        gc.setFont(new Font(50));
+        gc.setFill(new LinearGradient(0, 0, 0.5, 0.5, true, CycleMethod.REPEAT,
                 new Stop(0.0, Color.RED),
                 new Stop(1.0, Color.BLUE)));
-        this.gc.fillText("Game over", (float) panelWidth / 6, (float) panelHeight / 2);
-        this.gc.stroke();
+        gc.fillText("Game over", (float) panelWidth / 6, (float) panelHeight / 2);
+        gc.stroke();
     }
 
     private boolean detectRotationCollision(Tetramino tetramino) {
-        if (tetramino.nextRotation[0].length + tetramino.x > this.grid[0].length) {
+        if (tetramino.nextRotation[0].length + tetramino.x > grid.getWidth()) {
             return true;
         }
         for (int rowIndex = 0; rowIndex < tetramino.nextRotation.length; rowIndex++) {
             for (int blockIndex = 0; blockIndex < tetramino.nextRotation[rowIndex].length; blockIndex++) {
-                if (this.grid[tetramino.y + rowIndex][tetramino.x + blockIndex] == 1) {
+                GridCell cell = grid.getGridCell(tetramino.y + rowIndex, tetramino.x + blockIndex);
+                if (cell.isOccupied()) {
                     return true;
                 }
             }
@@ -253,7 +193,8 @@ public class TetrisGame extends Application {
         }
         for (int rowIndex = 0; rowIndex < tetramino.tetramino.length; rowIndex++) {
             for (int blockIndex = 0; blockIndex < tetramino.tetramino[rowIndex].length; blockIndex++) {
-                if (tetramino.tetramino[rowIndex][blockIndex] > 0 && this.grid[tetramino.y + rowIndex][tetramino.x + blockIndex - 1] == 1) {
+                GridCell cell = grid.getGridCell(tetramino.y + rowIndex, tetramino.x + blockIndex - 1);
+                if (tetramino.tetramino[rowIndex][blockIndex] > 0 && cell.isOccupied()) {
                     return true;
                 }
             }
@@ -262,12 +203,13 @@ public class TetrisGame extends Application {
     }
 
     private boolean detectRightColision(Tetramino tetramino) {
-        if (tetramino.x == this.grid[0].length) {
+        if (tetramino.x == grid.getWidth()) {
             return true;
         }
         for (int rowIndex = 0; rowIndex < tetramino.tetramino.length; rowIndex++) {
             for (int blockIndex = 0; blockIndex < tetramino.tetramino[rowIndex].length; blockIndex++) {
-                if (tetramino.tetramino[rowIndex][blockIndex] > 0 && grid[tetramino.y + rowIndex][tetramino.x + blockIndex + 1] == 1) {
+                GridCell cell = grid.getGridCell(tetramino.y + rowIndex, tetramino.x + blockIndex + 1);
+                if (tetramino.tetramino[rowIndex][blockIndex] > 0 && cell.isOccupied()) {
                     return true;
                 }
             }
@@ -278,7 +220,8 @@ public class TetrisGame extends Application {
     private boolean detectVerticalCollision(Tetramino tetramino) {
         for (int rowIndex = 0; rowIndex < tetramino.tetramino.length; rowIndex++) {
             for (int blockIndex = 0; blockIndex < tetramino.tetramino[rowIndex].length; blockIndex++) {
-                if (tetramino.tetramino[rowIndex][blockIndex] > 0 && this.grid[tetramino.y + rowIndex + 1][tetramino.x + blockIndex] == 1) {
+                GridCell cell = grid.getGridCell(tetramino.y + rowIndex + 1,tetramino.x + blockIndex);
+                if (tetramino.tetramino[rowIndex][blockIndex] > 0 && cell.isOccupied()) {
                     return true;
                 }
             }
@@ -286,25 +229,6 @@ public class TetrisGame extends Application {
         return false;
     }
 
-    private void addToGrid(Tetramino tetramino) {
-        for (int rowIndex = 0; rowIndex < tetramino.tetramino.length; rowIndex++) {
-            for (int blockIndex = 0; blockIndex < tetramino.tetramino[rowIndex].length; blockIndex++) {
-                if (tetramino.tetramino[rowIndex][blockIndex] > 0) {
-                    this.grid[tetramino.y + rowIndex][tetramino.x + blockIndex] = 1;
-                }
-            }
-        }
-//        printGrid();
-    }
-
-    private void printGrid() {
-        for (int[] row : this.grid) {
-            for (int bit : row) {
-                System.out.print(bit);
-            }
-            System.out.print("\n");
-        }
-    }
 
     private void drawGame() {
         this.gc.clearRect(0, 0, this.canvas.getWidth(), this.canvas.getHeight());
@@ -314,6 +238,19 @@ public class TetrisGame extends Application {
         drawTetramino(this.currentTetramino);
         drawPanel(this.panelPadding, this.panelPadding, this.panelWidth, this.panelHeight);
         drawNextTetramino();
+        drawLandedTetraminos();
+    }
+
+    private void drawLandedTetraminos(){
+        for (int i = 0; i < grid.gridArray.size(); i++) {
+            ArrayList<GridCell> currentRow = grid.gridArray.get(i);
+            currentRow.forEach(gridCell -> {
+                if (gridCell.isOccupied()){
+                    drawBlock(gridCell.getPosX(), gridCell.getPosY(),gridCell.getColor1(),gridCell.getColor2());
+                }
+            });
+
+        }
     }
 
     private void drawNextTetramino() {
