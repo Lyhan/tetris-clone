@@ -1,19 +1,12 @@
 package com.games.tetris;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.function.Predicate;
 
 public class Grid {
 
     private int height;
     private int width;
-    public HashMap<Integer, ArrayList<GridCell>> gridArray = new HashMap<>();
-
-    // arg-less constructor
-    public Grid() {
-
-    }
+    private ArrayList<ArrayList<GridCell>> gridArray = new ArrayList<>();
 
     // parameterized constructur
     public Grid(int height, int width) {
@@ -21,11 +14,12 @@ public class Grid {
         this.width = width;
     }
 
-    private void printGrid() {
+    // For debugging
+    public void printGrid() {
         System.out.println(new String(new char[width + 2]).replace('\0', '-'));
         for (int i = 0; i < gridArray.size(); i++) {
             ArrayList<GridCell> row = gridArray.get(i);
-            System.out.print('|');
+            System.out.print(String.valueOf(i) + '\t' + '|');
             for (GridCell cell : row) {
                 System.out.print(cell.isOccupied() ? 1 : 0);
             }
@@ -34,6 +28,10 @@ public class Grid {
         }
         System.out.println(new String(new char[width + 2]).replace('\0', '-'));
         System.out.print("\n");
+    }
+
+    public ArrayList<GridCell> getRow(int index) {
+        return gridArray.get(index);
     }
 
     public GridCell getGridCell(int row, int column) {
@@ -45,53 +43,78 @@ public class Grid {
         for (int rowIndex = 0; rowIndex < tetramino.tetramino.length; rowIndex++) {
             for (int blockIndex = 0; blockIndex < tetramino.tetramino[rowIndex].length; blockIndex++) {
                 if (tetramino.tetramino[rowIndex][blockIndex] > 0) {
-                    int posX = tetramino.x + blockIndex;
-                    int posY = tetramino.y + rowIndex;
+                    int posX = tetramino.getX() + blockIndex;
+                    int posY = tetramino.getY() + rowIndex;
                     GridCell cell = getGridCell(posY, posX);
                     cell.setOccupied(true);
                     cell.setColor1(tetramino.color1);
                     cell.setColor2(tetramino.color2);
-                    cell.setPosX(posX);
-                    cell.setPosY(posY);
-//                    gridArray[tetramino.y + rowIndex][tetramino.x + blockIndex] = 1;
                 }
             }
         }
-        printGrid();
         clearCompletedRows();
     }
 
+    protected boolean rowCompleted(ArrayList<GridCell> row) {
+        for (GridCell i : row) {
+            if (!i.isOccupied()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private void clearCompletedRows() {
-        // CONTINUE HERE
+        int counter = 0;
+        int[] completedRows = new int[4]; // Maximum possible rows completed in 1 shot
         for (int i = 0; i < gridArray.size(); i++) {
-            ArrayList<GridCell> currentRow = gridArray.get(i);
-            Predicate<GridCell> CellIsOccupied = GridCell::isOccupied;
-            if (currentRow.stream().allMatch(CellIsOccupied)) {
-                shiftGridRows(i);
-                break;
+            if (rowCompleted(gridArray.get(i))) {
+                completedRows[counter] = i;
+                counter++;
+            }
+        }
+
+        if (counter > 0) {
+            shiftGridRows(completedRows);
+        }
+    }
+
+    private void shiftGridRows(int[] rows) {
+        for (int rowIndex : rows) {
+            if (rowIndex > 0) {
+                // Shift tetramino 'y' position down
+                for (int i = rowIndex; i > 0; i--) {
+                    ArrayList<GridCell> row = gridArray.get(i);
+                    ArrayList<GridCell> replacement = new ArrayList<>();
+                    for (int j = 0; j < row.size(); j++) {
+                        GridCell cell = row.get(j);
+                        replacement.add(j, cell);
+                    }
+                    gridArray.set(i, replacement);
+                }
+            }
+        }
+        // Remove completed rows
+        for (int rowIndex : rows) {
+            if (rowIndex > 0) {
+                gridArray.remove(rowIndex);
+                gridArray.add(0, createEmptyRow());
             }
         }
     }
 
-    private void shiftGridRows(int rowIndex) {
-        if (rowIndex == 0) {
-            return;
+    public ArrayList<GridCell> createEmptyRow() {
+        ArrayList<GridCell> row = new ArrayList<>();
+        for (int j = 0; j < width; j++) {
+            row.add(new GridCell());
         }
-        for (int i = rowIndex; i > -1; i--) {
-            gridArray.put(i, gridArray.get(i - 1));
-        }
-        clearCompletedRows();
+        return row;
     }
 
     public void initializeGrid() {
         for (int i = 0; i < height; i++) {
-            ArrayList<GridCell> row = new ArrayList<>();
-            for (int j = 0; j < width; j++) {
-                row.add(new GridCell());
-            }
-            gridArray.put(i, row);
+            gridArray.add(i, createEmptyRow());
         }
-        printGrid();
     }
 
     public int getWidth() {

@@ -6,8 +6,6 @@ public class GridCell {
     private boolean occupied;
     private Color color1;
     private Color color2;
-    private int posX;
-    private int posY;
 
     // arg-less constructor
     public GridCell() {
@@ -15,8 +13,8 @@ public class GridCell {
     }
 
     // parameterized constructor
-    public GridCell(boolean state) {
-        this.occupied = state;
+    public GridCell(boolean occupied) {
+        this.occupied = occupied;
     }
 
 
@@ -42,21 +40,5 @@ public class GridCell {
 
     public void setOccupied(boolean occupied) {
         this.occupied = occupied;
-    }
-
-    public int getPosX() {
-        return posX;
-    }
-
-    public void setPosX(int posX) {
-        this.posX = posX;
-    }
-
-    public int getPosY() {
-        return posY;
-    }
-
-    public void setPosY(int posY) {
-        this.posY = posY;
     }
 }
