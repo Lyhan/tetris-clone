@@ -9,8 +9,6 @@ import java.util.Random;
 public class Tetramino {
     private int x;
     private int y;
-    protected int width;
-    protected int height;
     protected Color color1, color2;
 
     protected int[][] tetramino, nextRotation;
@@ -24,8 +22,6 @@ public class Tetramino {
         while (this.color1.equals(this.color2)) {
             this.color2 = generateRandomColor();
         }
-        width = this.tetramino[0].length;
-        height = this.tetramino.length;
         nextRotation = getNextRotation();
 
     }
@@ -46,8 +42,6 @@ public class Tetramino {
 
     public void rotate(){
         tetramino = nextRotation;
-        width = tetramino[0].length;
-        height = tetramino.length;
         nextRotation = getNextRotation();
     }
 
@@ -77,4 +71,14 @@ public class Tetramino {
     public void setY(int y) {
         this.y = y;
     }
+
+    public int getBlocksWidth() {
+        return this.tetramino[0].length;
+    }
+
+
+    public int getBlocksHeight() {
+        return this.tetramino.length;
+    }
+
 }
